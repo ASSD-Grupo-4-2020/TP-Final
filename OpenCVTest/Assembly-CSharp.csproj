@@ -49,6 +49,8 @@
   <ItemGroup>
      <Compile Include="Assets\OpenCVFaceDetection.cs" />
      <Compile Include="Assets\PositionAtFaceScreenSpace.cs" />
+     <Compile Include="Assets\PositionAtLeftEyeScreenSpace.cs" />
+     <Compile Include="Assets\PositionAtRightEyeScreenSpace.cs" />
  <Reference Include="UnityEngine">
  <HintPath>C:/Program Files/Unity/Hub/Editor/2020.3.21f1/Editor/Data/Managed/UnityEngine/UnityEngine.dll</HintPath>
  </Reference>

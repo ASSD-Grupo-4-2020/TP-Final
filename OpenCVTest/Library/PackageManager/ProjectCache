@@ -5,7 +5,7 @@ m_ProjectFiles:
     m_ContentTrackingEnabled: 1
     m_ModificationDate:
       serializedVersion: 2
-      ticks: 637713196304075913
+      ticks: 637713196300000000
     m_Hash: 1206723745
   m_LockFileStatus:
     m_FilePath: C:/Users/Juan Martin/Documents/UnityProyects/OpenCVTest/Packages/packages-lock.json
@@ -13,7 +13,7 @@ m_ProjectFiles:
     m_ContentTrackingEnabled: 1
     m_ModificationDate:
       serializedVersion: 2
-      ticks: 637713196525733358
+      ticks: 637713196520000000
     m_Hash: 3682739031
 m_EmbeddedPackageManifests:
   m_ManifestsStatus: {}

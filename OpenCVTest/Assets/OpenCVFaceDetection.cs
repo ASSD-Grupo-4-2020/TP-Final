@@ -5,26 +5,34 @@ using UnityEngine;
 public class OpenCVFaceDetection : MonoBehaviour
 {
     public static List<Vector2> NormalizedFacePositions { get; private set; }
+    public static Vector3 Facesize;
+    public static List<Vector2> NormalizedLefteyePositions { get; private set; }
+    public static Vector3 Leftsize;
+    public static List<Vector2> NormalizedRighteyePositions { get; private set; }
+    public static Vector3 Rightsize;
     public static Vector2 CameraResolution;
 
     /// <summary>
     /// Downscale factor to speed up detection.
     /// </summary>
     private const int DetectionDownScale = 1;
-
+    private const int MovementScale = 5;
+    private const float ProximityScale = 120 / 7;
     private bool _ready;
-    private int _maxFaceDetectCount = 5;
+    private int _maxFaceDetectCount = 2;
     private CvCircle[] _faces;
+    private CvCircle[] _lefteye;
+    private CvCircle[] _righteye;
 
     void Start()
     {
         int camWidth = 0, camHeight = 0;
-        int result = OpenCVInterop.Init(ref camWidth, ref camHeight);
+        int result = OpenCVInterop.Init(ref camWidth, ref camHeight);           //Get size of frames gotten from camera, number of pixels in image
         if (result < 0)
         {
             if (result == -1)
             {
-                Debug.LogWarningFormat("[{0}] Failed to find cascades definition.", GetType());
+                Debug.LogWarningFormat("[{0}] Failed to find neuronals networks definitions.", GetType());
             }
             else if (result == -2)
             {
@@ -35,8 +43,15 @@ public class OpenCVFaceDetection : MonoBehaviour
         }
 
         CameraResolution = new Vector2(camWidth, camHeight);
+        // Arrays to store variables
         _faces = new CvCircle[_maxFaceDetectCount];
+        _lefteye = new CvCircle[_maxFaceDetectCount];
+        _righteye = new CvCircle[_maxFaceDetectCount];
+
         NormalizedFacePositions = new List<Vector2>();
+        NormalizedLefteyePositions = new List<Vector2>();
+        NormalizedRighteyePositions = new List<Vector2>();
+
         OpenCVInterop.SetScale(DetectionDownScale);
         _ready = true;
     }
@@ -55,22 +70,45 @@ public class OpenCVFaceDetection : MonoBehaviour
             return;
 
         int detectedFaceCount = 0;
+        int detectedLefteyeCount = 0;
+        int detectedRighteyeCount = 0;
         unsafe
         {
-            fixed (CvCircle* outFaces = _faces)
+            fixed (CvCircle* outFaces = _faces, outlefteye = _lefteye, outrighteye = _righteye)
             {
-                OpenCVInterop.Detect(outFaces, _maxFaceDetectCount, ref detectedFaceCount);
+                OpenCVInterop.Detect(outFaces, outlefteye, outrighteye, _maxFaceDetectCount, ref detectedFaceCount, ref detectedLefteyeCount, ref detectedRighteyeCount);
             }
         }
 
         NormalizedFacePositions.Clear();
+        NormalizedLefteyePositions.Clear();
+        NormalizedRighteyePositions.Clear();
         for (int i = 0; i < detectedFaceCount; i++)
         {
-            NormalizedFacePositions.Add(new Vector2((_faces[i].X * DetectionDownScale) / CameraResolution.x, 1f - ((_faces[i].Y * DetectionDownScale) / CameraResolution.y)));
+            float size = _faces[i].Radius * DetectionDownScale * ProximityScale / CameraResolution.x;
+            NormalizedFacePositions.Add( new Vector2( ((_faces[i].X * DetectionDownScale) - (CameraResolution.x / 2))*(2*MovementScale/CameraResolution.x), ((_faces[i].Y * DetectionDownScale) - (CameraResolution.y / 2)) * (-2*MovementScale / CameraResolution.y) ) );
+            Facesize = new Vector3(size, size, size); 
+            //Debug.Log("Face = " + new Vector2(((_faces[i].X * DetectionDownScale) - (CameraResolution.x / 2)) * (2 * MovementScale / CameraResolution.x), ((_faces[i].Y * DetectionDownScale) - (CameraResolution.y / 2)) * (-2 * MovementScale / CameraResolution.y)));
+            //Debug.Log("FaceSize=" +  _faces[i].Radius*DetectionDownScale*FaceScale / CameraResolution.x);
+        }
+        for (uint i = 0; i < detectedLefteyeCount; i++)
+        {
+            float size = _lefteye[i].Radius * DetectionDownScale * ProximityScale / CameraResolution.x;
+            NormalizedLefteyePositions.Add(new Vector2( ( ( _lefteye[i].X* DetectionDownScale ) - (CameraResolution.x / 2) ) * (2 * MovementScale / CameraResolution.x), (( _lefteye[i].Y* DetectionDownScale) - (CameraResolution.y / 2))*(-2 * MovementScale / CameraResolution.y)) );
+            Leftsize = new Vector3(size, size, size);
+            //Debug.Log("Lefteye = " + new Vector2(((_lefteye[i].X * DetectionDownScale) - (CameraResolution.x / 2)) * (2 * MovementScale / CameraResolution.x), (( _lefteye[i].Y* DetectionDownScale) - (CameraResolution.y / 2)) * (-2 * MovementScale / CameraResolution.y)) );
+            //Debug.Log("EyeSize=" + _lefteye[i].Radius * DetectionDownScale * ProximityScale / CameraResolution.x);
+        }
+        for (uint i = 0; i < detectedRighteyeCount; i++)
+        {
+            float size = _lefteye[i].Radius * DetectionDownScale * ProximityScale / CameraResolution.x;
+            NormalizedRighteyePositions.Add(new Vector2( ( ( _righteye[i].X * DetectionDownScale ) - (CameraResolution.x / 2) ) * (2 * MovementScale / CameraResolution.x), (( _righteye[i].Y * DetectionDownScale) - (CameraResolution.y / 2)) * (-2 * MovementScale / CameraResolution.y)) );
+            Rightsize = new Vector3(size, size, size);
+            //Debug.Log("RightEye = " + new Vector2(((_lefteye[i].X * DetectionDownScale) - (CameraResolution.x / 2)) * (2 * MovementScale / CameraResolution.x), ((_lefteye[i].Y * DetectionDownScale) - (CameraResolution.y / 2)) * (-2 * MovementScale / CameraResolution.y)));
+            //Debug.Log("RightSize=" + _righteye[i].Radius * DetectionDownScale * ProximityScale / CameraResolution.x);
         }
     }
 }
-
 // Define the functions which can be called from the .dll.
 internal static class OpenCVInterop
 {
@@ -84,7 +122,7 @@ internal static class OpenCVInterop
     internal static extern int SetScale(int downscale);
 
     [DllImport("OpenCV")]
-    internal unsafe static extern void Detect(CvCircle* outFaces, int maxOutFacesCount, ref int outDetectedFacesCount);
+    internal unsafe static extern void Detect(CvCircle* outFaces, CvCircle* outlefteye, CvCircle* outrighteye, int maxOutFacesCount, ref int outDetectedFacesCount, ref int outDetectedLefteyeCount, ref int outDetectedRighteyeCount);
 }
 
 // Define the structure to be sequential and with the correct byte size (3 ints = 4 bytes * 3 = 12 bytes)
