@@ -10,6 +10,9 @@ public class OpenCVFaceDetection : MonoBehaviour
     public static Vector3 Leftsize;
     public static List<Vector2> NormalizedRighteyePositions { get; private set; }
     public static Vector3 Rightsize;
+    public static List<Vector2> NormalizedMouthPositions { get; private set; }
+    public static Vector3 Mouthssize;
+
     public static Vector2 CameraResolution;
 
     /// <summary>
@@ -17,12 +20,16 @@ public class OpenCVFaceDetection : MonoBehaviour
     /// </summary>
     private const int DetectionDownScale = 1;
     private const int MovementScale = 5;
+    private const float MovementScaleMouthY = 9 / 2;
     private const float ProximityScale = 120 / 7;
+    private const float ProximityScaleMouthX = 240 / 7;
     private bool _ready;
     private int _maxFaceDetectCount = 2;
     private CvCircle[] _faces;
     private CvCircle[] _lefteye;
     private CvCircle[] _righteye;
+    private CvBox[] _mouth;
+
 
     void Start()
     {
@@ -47,10 +54,12 @@ public class OpenCVFaceDetection : MonoBehaviour
         _faces = new CvCircle[_maxFaceDetectCount];
         _lefteye = new CvCircle[_maxFaceDetectCount];
         _righteye = new CvCircle[_maxFaceDetectCount];
+        _mouth = new CvBox[_maxFaceDetectCount];
 
         NormalizedFacePositions = new List<Vector2>();
         NormalizedLefteyePositions = new List<Vector2>();
         NormalizedRighteyePositions = new List<Vector2>();
+        NormalizedMouthPositions = new List<Vector2>();
 
         OpenCVInterop.SetScale(DetectionDownScale);
         _ready = true;
@@ -72,17 +81,22 @@ public class OpenCVFaceDetection : MonoBehaviour
         int detectedFaceCount = 0;
         int detectedLefteyeCount = 0;
         int detectedRighteyeCount = 0;
+        int detectedMouthCount = 0;
         unsafe
         {
             fixed (CvCircle* outFaces = _faces, outlefteye = _lefteye, outrighteye = _righteye)
             {
-                OpenCVInterop.Detect(outFaces, outlefteye, outrighteye, _maxFaceDetectCount, ref detectedFaceCount, ref detectedLefteyeCount, ref detectedRighteyeCount);
+                fixed (CvBox* outmouth = _mouth)
+                {
+                    OpenCVInterop.Detect(outFaces, outlefteye, outrighteye, outmouth, _maxFaceDetectCount, ref detectedFaceCount, ref detectedLefteyeCount, ref detectedRighteyeCount, ref detectedMouthCount);
+                }
             }
         }
 
         NormalizedFacePositions.Clear();
         NormalizedLefteyePositions.Clear();
         NormalizedRighteyePositions.Clear();
+        NormalizedMouthPositions.Clear();
         for (int i = 0; i < detectedFaceCount; i++)
         {
             float size = _faces[i].Radius * DetectionDownScale * ProximityScale / CameraResolution.x;
@@ -107,6 +121,15 @@ public class OpenCVFaceDetection : MonoBehaviour
             //Debug.Log("RightEye = " + new Vector2(((_lefteye[i].X * DetectionDownScale) - (CameraResolution.x / 2)) * (2 * MovementScale / CameraResolution.x), ((_lefteye[i].Y * DetectionDownScale) - (CameraResolution.y / 2)) * (-2 * MovementScale / CameraResolution.y)));
             //Debug.Log("RightSize=" + _righteye[i].Radius * DetectionDownScale * ProximityScale / CameraResolution.x);
         }
+        for (uint i = 0; i < detectedMouthCount; i++)
+        {
+            float sizex = _mouth[i].Width * DetectionDownScale * ProximityScaleMouthX / CameraResolution.x;
+            float sizey = _mouth[i].Height * DetectionDownScale * ProximityScale / CameraResolution.x;
+            NormalizedMouthPositions.Add(new Vector2(((_mouth[i].X * DetectionDownScale) - (CameraResolution.x / 2)) * (2 * MovementScale / CameraResolution.x), ((_mouth[i].Y * DetectionDownScale) - (CameraResolution.y / 2)) * (-2 * MovementScaleMouthY / CameraResolution.y)));
+            Mouthssize = new Vector3(sizex, sizey, sizey);
+            //Debug.Log("Mouth = " + new Vector2(((_mouth[i].X * DetectionDownScale) - (CameraResolution.x / 2)) * (2 * MovementScale / CameraResolution.x), ((_mouth[i].Y * DetectionDownScale) - (CameraResolution.y / 2)) * (-2 * MovementScaleMouthY / CameraResolution.y)));
+            Debug.Log("Mouthssize=" + new Vector3(sizex, sizey, sizey));
+        }
     }
 }
 // Define the functions which can be called from the .dll.
@@ -122,7 +145,7 @@ internal static class OpenCVInterop
     internal static extern int SetScale(int downscale);
 
     [DllImport("OpenCV")]
-    internal unsafe static extern void Detect(CvCircle* outFaces, CvCircle* outlefteye, CvCircle* outrighteye, int maxOutFacesCount, ref int outDetectedFacesCount, ref int outDetectedLefteyeCount, ref int outDetectedRighteyeCount);
+    internal unsafe static extern void Detect(CvCircle* outFaces, CvCircle* outlefteye, CvCircle* outrighteye, CvBox* outmouth, int maxOutFacesCount, ref int outDetectedFacesCount, ref int outDetectedLefteyeCount, ref int outDetectedRighteyeCount, ref int outDetectedMouth);
 }
 
 // Define the structure to be sequential and with the correct byte size (3 ints = 4 bytes * 3 = 12 bytes)
@@ -131,3 +154,8 @@ public struct CvCircle
 {
     public int X, Y, Radius;
 }
+[StructLayout(LayoutKind.Sequential, Size = 16)]
+public struct CvBox
+{
+    public int X, Y, Width, Height;
+};

@@ -1,0 +1,2 @@
+C:\Users\Juan Martin\Documents\UnityProyects\OpenCVTest\obj\Debug\Assembly-CSharp.csprojAssemblyReference.cache
+C:\Users\Juan Martin\Documents\UnityProyects\OpenCVTest\obj\Debug\Assembly-CSharp.csproj.CoreCompileInputs.cache
